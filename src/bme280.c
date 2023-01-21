@@ -380,7 +380,7 @@ int8_t bme280_init(struct bme280_dev *dev)
             }
 
             /* Wait for 1 ms */
-            dev->delay_ms(1);
+            dev->delay_us(1000, dev->intf_ptr);
             --try_count;
         }
 
@@ -644,7 +644,7 @@ int8_t bme280_soft_reset(const struct bme280_dev *dev)
             do
             {
                 /* As per data sheet - Table 1, startup time is 2 ms. */
-                dev->delay_ms(2);
+                dev->delay_us(2000, dev->intf_ptr);
                 rslt = bme280_get_regs(BME280_STATUS_REG_ADDR, &status_reg, 1, dev);
             } while ((rslt == BME280_OK) && (try_run--) && (status_reg & BME280_STATUS_IM_UPDATE));
 
@@ -1481,7 +1481,7 @@ static int8_t null_ptr_check(const struct bme280_dev *dev)
 {
     int8_t rslt;
 
-    if ((dev == NULL) || (dev->read == NULL) || (dev->write == NULL) || (dev->delay_ms == NULL))
+    if ((dev == NULL) || (dev->read == NULL) || (dev->write == NULL) || (dev->delay_us == NULL))
     {
         /* Device structure pointer is not valid */
         rslt = BME280_E_NULL_PTR;
