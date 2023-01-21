@@ -26,8 +26,8 @@ float bme_start()
     dev.intf = BME280_I2C_INTF;
     dev.read = user_i2c_read;
     dev.write = user_i2c_write;
-    dev.delay_us = user_delay_us;
-    dev.intf_ptr = &id;
+    dev.delay_ms = user_delay_ms;
+    dev.intf = &id;
 
     rslt = bme280_init(&dev);
     if (rslt != BME280_OK)
@@ -60,7 +60,7 @@ float stream_sensor_data_normal_mode(struct bme280_dev *dev, struct identifier i
     rslt = bme280_set_sensor_settings(settings_sel, dev);
     rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, dev);
 
-    dev->delay_us(100000, dev->intf_ptr);
+    dev->delay_ms(100000, dev->intf);
     rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, dev);
     if (rslt != BME280_OK)
     {
