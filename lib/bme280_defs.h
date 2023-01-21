@@ -250,7 +250,7 @@ enum bme280_intf {
  * @brief Type definitions
  */
 typedef int8_t (*bme280_com_fptr_t)(uint8_t dev_id, uint8_t reg_addr, uint8_t *data, uint16_t len);
-typedef void (*bme280_delay_fptr_t)(uint32_t period);
+typedef void (*bme280_delay_us_fptr_t)(uint32_t period, void *intf_ptr);
 
 /*!
  * @brief Calibration data
@@ -377,7 +377,7 @@ struct bme280_dev
     bme280_com_fptr_t write;
 
     /*! Delay function pointer */
-    bme280_delay_fptr_t delay_us;
+    bme280_delay_us_fptr_t delay_us;
 
     /*! Trim data */
     struct bme280_calib_data calib_data;
