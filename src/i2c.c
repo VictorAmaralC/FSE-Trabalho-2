@@ -1,5 +1,5 @@
-#include "../inc/bme280.h"
-#include "../inc/i2c.h"
+#include "../lib/bme280.h"
+#include "../lib/i2c.h"
 
 //Returns external temperature value. In case of any failure, retry.
 float bme_start()
