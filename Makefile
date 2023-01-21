@@ -1,13 +1,12 @@
 CC = gcc
+INCDIR = lib
+SRCDIR = src
+OBJDIR = obj
+CFLAGS = -c -Wall -lwiringPi -I$(INCDIR)
 LDFLAGS = -lwiringPi -lncurses -lpthread
-BLDDIR = .
-INCDIR = $(BLDDIR)/lib
-SRCDIR = $(BLDDIR)/src
-OBJDIR = $(BLDDIR)/obj
-CFLAGS = -c -Wall -I$(INCDIR)
 SRC = $(wildcard $(SRCDIR)/*.c)
 OBJ = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRC))
-EXE = bin/bin
+EXE = ./t2.out
 
 all: clean $(EXE) 
     
