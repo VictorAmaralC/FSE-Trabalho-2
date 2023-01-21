@@ -8,7 +8,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
-#include "../lib/control_lcd.h"
 #include "../lib/gpio.h"
 #include "../lib/i2c.h"
 #include "../lib/uart.h"
@@ -57,7 +56,6 @@ void sys_init()
 
     //Starting communications wich stays open for the remainder of the program.
     gpio_init();
-    lcd_init();
     pid_configura_constantes(30.0, 0.2, 400.0);
 
     //Setting up ncurses.
@@ -91,7 +89,6 @@ void sys_run()
             reference_temp = request_uart_data(R_TR);
         }
         external_temp = bme_start();
-        write_lcd(internal_temp, external_temp, reference_temp);
 
         pid_atualiza_referencia(reference_temp);
         gpio_control(internal_temp);
@@ -141,7 +138,6 @@ void sys_end()
 {
     gpio_end();
     close_uart();
-    ClrLcd();
     endwin();
     exit(0);
 }
