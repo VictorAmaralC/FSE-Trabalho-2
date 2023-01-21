@@ -361,6 +361,9 @@ struct bme280_dev
     /*! Chip Id */
     uint8_t chip_id;
 
+    /*< Interface function pointer used to enable the device address for I2C and chip selection for SPI */
+    void *intf_ptr;
+
     /*! Device Id */
     uint8_t dev_id;
 
@@ -374,7 +377,7 @@ struct bme280_dev
     bme280_com_fptr_t write;
 
     /*! Delay function pointer */
-    bme280_delay_fptr_t delay_ms;
+    bme280_delay_fptr_t delay_us;
 
     /*! Trim data */
     struct bme280_calib_data calib_data;
