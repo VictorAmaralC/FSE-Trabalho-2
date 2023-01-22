@@ -1,110 +1,89 @@
-#include "../lib/bme280.h"
-#include "../lib/i2c.h"
+#include <fcntl.h>
+#include <linux/i2c-dev.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-//Returns external temperature value. In case of any failure, retry.
-float bme_start()
-{
-    struct bme280_dev dev;
-    struct identifier id;
+#include "bme280.h"
 
-    int8_t rslt = BME280_OK;
+int i2c_filestream;
 
-    char i2cInterface[] = "/dev/i2c-1";
-    if ((id.fd = open(i2cInterface, O_RDWR)) < 0)
-    {
-        return bme_start();
-    }
+int8_t userI2cRead(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len) {
+  write(i2c_filestream, &reg_addr, 1);
+  read(i2c_filestream, data, len);
 
-    id.dev_addr = BME280_I2C_ADDR_PRIM;
-
-    if (ioctl(id.fd, I2C_SLAVE, id.dev_addr) < 0)
-    {
-        close(id.fd);
-        return bme_start();
-    }
-
-    dev.intf = BME280_I2C_INTF;
-    dev.read = user_i2c_read;
-    dev.write = user_i2c_write;
-    dev.delay_us = user_delay_us;
-    dev.intf_ptr = &id;
-
-    rslt = bme280_init(&dev);
-    if (rslt != BME280_OK)
-    {
-        close(id.fd);
-        return bme_start();
-    }
-
-    return stream_sensor_data_normal_mode(&dev, id);
+  return 0;
 }
 
-float stream_sensor_data_normal_mode(struct bme280_dev *dev, struct identifier id)
-{
-    int8_t rslt;
-    uint8_t settings_sel;
-    struct bme280_data comp_data;
+void userDelayMs(uint32_t period) { usleep(period * 1000); }
 
-    //Recommended mode of operation: Indoor navigation
-    dev->settings.osr_h = BME280_OVERSAMPLING_1X;
-    dev->settings.osr_p = BME280_OVERSAMPLING_16X;
-    dev->settings.osr_t = BME280_OVERSAMPLING_2X;
-    dev->settings.filter = BME280_FILTER_COEFF_16;
-    dev->settings.standby_time = BME280_STANDBY_TIME_62_5_MS;
+int8_t userI2cWrite(uint8_t id, uint8_t reg_addr, uint8_t *data, uint16_t len) {
+  int8_t *buf;
 
-    settings_sel = BME280_OSR_PRESS_SEL;
-    settings_sel |= BME280_OSR_TEMP_SEL;
-    settings_sel |= BME280_OSR_HUM_SEL;
-    settings_sel |= BME280_STANDBY_SEL;
-    settings_sel |= BME280_FILTER_SEL;
-    rslt = bme280_set_sensor_settings(settings_sel, dev);
-    rslt = bme280_set_sensor_mode(BME280_NORMAL_MODE, dev);
+  buf = malloc(len + 1);
+  buf[0] = reg_addr;
+  memcpy(buf + 1, data, len);
+  if (write(i2c_filestream, buf, len + 1) < len) {
+    return BME280_E_COMM_FAIL;
+  }
 
-    dev->delay_us(100000, dev->intf_ptr);
-    rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, dev);
-    if (rslt != BME280_OK)
-    {
-        close(id.fd);
-        return bme_start();
-    }
+  free(buf);
 
-    close(id.fd);
-    return comp_data.temperature;
+  return BME280_OK;
 }
 
-void user_delay_us(uint32_t period, void *intf_ptr)
-{
-    usleep(period);
+float getCurrentTemperature(struct bme280_dev *dev) {
+  uint8_t settings_sel = 0;
+  uint32_t req_delay;
+  struct bme280_data comp_data;
+
+  dev->settings.osr_h = BME280_OVERSAMPLING_1X;
+  dev->settings.osr_p = BME280_OVERSAMPLING_16X;
+  dev->settings.osr_t = BME280_OVERSAMPLING_2X;
+  dev->settings.filter = BME280_FILTER_COEFF_16;
+
+  settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL |
+                 BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+
+  bme280_set_sensor_settings(settings_sel, dev);
+
+  req_delay = bme280_cal_meas_delay(&dev->settings);
+  bme280_set_sensor_mode(BME280_FORCED_MODE, dev);
+
+  dev->delay_ms(req_delay);
+  bme280_get_sensor_data(BME280_ALL, &comp_data, dev);
+  return comp_data.temperature;
 }
 
-int8_t user_i2c_read(uint8_t reg_addr, uint8_t *data, uint32_t len, void *intf_ptr)
-{
-    struct identifier id;
+struct bme280_dev connectBme() {
+  struct bme280_dev dev;
 
-    id = *((struct identifier *)intf_ptr);
+  int8_t rslt = BME280_OK;
+  char i2c_file[] = "/dev/i2c-1";
 
-    write(id.fd, &reg_addr, 1);
-    read(id.fd, data, len);
+  dev.dev_id = BME280_I2C_ADDR_PRIM;
+  dev.intf = BME280_I2C_INTF;
+  dev.read = userI2cRead;
+  dev.write = userI2cWrite;
+  dev.delay_ms = userDelayMs;
 
-    return 0;
-}
+  if ((i2c_filestream = open(i2c_file, O_RDWR)) < 0) {
+    exit(1);
+  }
 
-int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *data, uint32_t len, void *intf_ptr)
-{
-    uint8_t *buf;
-    struct identifier id;
+  if (ioctl(i2c_filestream, I2C_SLAVE, dev.dev_id) < 0) {
+    fprintf(stderr, "Falha ao conectar o dispositivo\n");
+    exit(1);
+  }
 
-    id = *((struct identifier *)intf_ptr);
-
-    buf = malloc(len + 1);
-    buf[0] = reg_addr;
-    memcpy(buf + 1, data, len);
-    if (write(id.fd, buf, len + 1) < (uint16_t)len)
-    {
-        return BME280_E_COMM_FAIL;
-    }
-
-    free(buf);
-
-    return BME280_OK;
+  /* Initialize the bme280 */
+  rslt = bme280_init(&dev);
+  if (rslt != BME280_OK) {
+    fprintf(stderr, "Falha ao inicializar o dispositivo (Codigo %+d).\n", rslt);
+    exit(1);
+  }
+  return dev;
 }

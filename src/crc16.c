@@ -43,11 +43,13 @@ short CRC16(short crc, char data)
     return ((crc & 0xFF00) >> 8) ^ tbl[(crc & 0x00FF) ^ (data & 0x00FF)];
 }
 
+
 short calcula_CRC(unsigned char *commands, int size) {
 	int i;
 	short crc = 0;
 	for(i=0;i<size;i++) {
 		crc = CRC16(crc, commands[i]);
 	}
+
 	return crc;
 }

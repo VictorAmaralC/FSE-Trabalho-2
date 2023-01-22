@@ -1,122 +1,111 @@
-#include "../lib/uart.h"
+#include <fcntl.h>  //Used for UART
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <termios.h>  //Used for UART
+#include <unistd.h>   //Used for UART
 
-float request_uart_data(int addr)
-{
-    float temperature = 0.0;
+#include "uart_defs.h"
+#include "crc16.h"
 
-    //Open uart for communication. In case of failure, retry.
-    open_connection();
-    if (uart0_filestream == -1)
-    {
-        return request_uart_data(addr);
+int initUart(){
+    int uart_filestream = -1;
+    char uart_path[] = "/dev/serial0";
+    uart_filestream = open(uart_path, O_RDWR | O_NOCTTY | O_NDELAY);
+    if(uart_filestream == -1){
+        printf("Não foi possível iniciar a Uart.\n");
     }
-    unsigned char msg[9] = {ADDRESS, REQUEST, addr, 4, 4, 1, 1};
-
-    //Generate message and send it to device. In case of failure, retry.
-    generate_msg(msg);
-    if (send_msg(msg, sizeof(msg) / sizeof(msg[0])) == -1)
-    {
-        return request_uart_data(addr);
+    else {
+        printf("UART inicializado.\n");
     }
-
-    //Receive message from device.
-    temperature = receive_msg(addr);
-
-    //End communication.
-    close_uart();
-
-    //Return read value.
-    return temperature;
-}
-
-void open_connection()
-{
-    uart0_filestream = open("/dev/serial0", O_RDWR | O_NOCTTY | O_NDELAY);
-    if (uart0_filestream == -1)
-    {
-        return;
-    }
-
     struct termios options;
-    tcgetattr(uart0_filestream, &options);
+    tcgetattr(uart_filestream, &options);
     options.c_cflag = B9600 | CS8 | CLOCAL | CREAD;
     options.c_iflag = IGNPAR;
     options.c_oflag = 0;
     options.c_lflag = 0;
-    tcflush(uart0_filestream, TCIFLUSH);
-    tcsetattr(uart0_filestream, TCSANOW, &options);
+    tcflush(uart_filestream, TCIFLUSH);
+    tcsetattr(uart_filestream, TCSANOW, &options);
+    return uart_filestream;
 }
 
-void generate_msg(unsigned char *initial_msg)
-{
-    short crc = calcula_CRC(initial_msg, 7);
+void requestToUart(int uart_filestream, unsigned char code){
+    unsigned char package[7] = {0x01, 0x23, code, 0x04, 0x04, 0x01, 0x01};
+    short crc = calcula_CRC(package, 7);
 
-    unsigned char crc_char[2];
-    memcpy(crc_char, &crc, 2);
-
-    memcpy(&initial_msg[7], crc_char, 2);
-    return;
-}
-
-int send_msg(unsigned char *msg, int size_msg)
-{
-    if (uart0_filestream != -1)
-    {
-        int count = write(uart0_filestream, &msg[0], size_msg);
-        if (count < 0)
-        {
-            return -1;
-        }
-        //Wait for device to validate message and send answer.
-        usleep(100000);
+    unsigned char message[9];
+    memcpy(message, &package, 7);
+    memcpy(&message[7], &crc, 2);
+    int check = write(uart_filestream, &message[0], 9);
+    if(check < 0){
+        printf("Ocorreu um erro na comunicação com o UART\n");
     }
-    return 0;
+    sleep(1);
 }
 
-//Receive and validate message.
-float receive_msg(int addr)
-{
-    float temperature = 0.0;
-    if (uart0_filestream != -1)
-    {
-        //In case of error (empty message, incorrect crc), retry.
-        unsigned char rx_buffer[256];
-        int rx_length = read(uart0_filestream, (void *)rx_buffer, 255);
-        if (rx_length < 0)
-        {
-            close(uart0_filestream);
-            return request_uart_data(addr);
-        }
-        else if (rx_length == 0)
-        {
-            close(uart0_filestream);
-            return request_uart_data(addr);
-        }
-        else if (check_crc(rx_buffer) != 0)
-        {
-            close(uart0_filestream);
-            return request_uart_data(addr);
-        }
-        memcpy(&temperature, &rx_buffer[3], 4);
+void sendToUart(int uart_filestream, unsigned char code, int value){
+    unsigned char package[7] = {0x01, 0x16, code, 0x04, 0x04, 0x01, 0x01};
+    unsigned char message[13];
+
+    memcpy(message, &package, 7);
+    memcpy(&message[7], &value, 4);
+
+    short crc = calcula_CRC(message, 11);
+
+    memcpy(&message[11], &crc, 2);
+
+    int check = write(uart_filestream, &message[0], 13);
+
+    if(check < 0){
+        printf("Ocorreu um erro na comunicação com o UART\n");
     }
-    return temperature;
+    sleep(1);
 }
 
-//Validates message received to avoid errors.
-int check_crc(unsigned char *msg)
-{
-    short crc = calcula_CRC(msg, 7);
+Number_type readFromUart(int uart_filestream, unsigned char code){
+    unsigned char buffer[20];
+    Number_type number = {-1, -1.0};
 
-    unsigned char my_crc[2];
-    memcpy(my_crc, &crc, 2);
-
-    unsigned char received[2];
-    memcpy(received, &msg[7], 2);
-
-    return memcmp(my_crc, received, 2);
+    int content = read(uart_filestream, buffer, 20);
+    if(!content){
+        printf("Nenhum dado foi recebido\n");
+    }
+    else if(content < 0){
+        printf("Erro ao ler dados\n");
+    }
+    else {
+        buffer[content] = '\0';
+        if (code == 0xC3){
+            memcpy(&number.int_value, &buffer[3], sizeof(int));
+        }
+        else{
+            memcpy(&number.float_value, &buffer[3], sizeof(float));
+        }
+        return number;
+    }
+    return number; 
 }
 
-void close_uart()
-{
-    close(uart0_filestream);
+void sendToUartByte(int uart_filestream, unsigned char code, char value) {
+    unsigned char package[7] = {0x01, 0x16, code, 0x04, 0x04, 0x01, 0x01};
+    unsigned char message[10];
+
+    memcpy(message, &package, 7);
+    memcpy(&message[7], &value, 1);
+
+    short crc = calcula_CRC(message, 8);
+
+    memcpy(&message[8], &crc, 2);
+
+    int check = write(uart_filestream, &message[0], 10);
+
+    if(check < 0){
+        printf("Ocorreu um erro na comunicação com o UART\n");
+    }
+    sleep(1);
+}
+
+void closeUart(int uart_filestream){
+    printf("Conexão UART finalizada\n");
+    close(uart_filestream);
 }
