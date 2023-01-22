@@ -4,14 +4,15 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <string.h>
-#include <ncurses.h>
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
-#include "../lib/gpio.h"
-#include "../lib/i2c.h"
-#include "../lib/uart.h"
-#include "../lib/pid.h"
+#include <wiringPi.h>
+
+#include "gpio.h"
+#include "i2c.h"
+#include "uart.h"
+#include "pid.h"
 
 void sys_init();
 void sys_run();
@@ -55,6 +56,7 @@ void sys_init()
     fclose(fp);
 
     //Starting communications wich stays open for the remainder of the program.
+    wiringPiSetup();
     gpio_init();
     pid_configura_constantes(30.0, 0.2, 400.0);
 

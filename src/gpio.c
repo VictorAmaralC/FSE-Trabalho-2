@@ -1,3 +1,8 @@
+#include <wiringPi.h>
+#include <softPwm.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include "../lib/gpio.h"
 
 //Controls wich device runs based on signal received.
