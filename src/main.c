@@ -45,8 +45,8 @@ void startProgram(){
 void menu() {
     int command;
     do {
-        requestToUart(uart_filestream, GET_KEY_VALUE);
-        command = readFromUart(uart_filestream, GET_KEY_VALUE).int_value;
+        requestToUart(uart_filestream, GET_UC);
+        command = readFromUart(uart_filestream, GET_UC).int_value;
         switchMode(command);
         delay(500);
     } while (1);
