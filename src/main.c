@@ -11,7 +11,7 @@
 #include "gpio.h"
 #include "uart.h"
 #include "display.h"
-#include "temperature.h"
+#include "i2c.h"
 
 int uart_filestream, key_gpio = 1;
 struct bme280_dev bme_connection;
@@ -113,13 +113,13 @@ void *PID(void *arg) {
     pidSetupConstants(30.0, 0.2, 400.0);
     int timerStarted = 0;
     do {
-        requestToUart(uart_filestream, GET_INTERNAL_TEMP);
-        TI = readFromUart(uart_filestream, GET_INTERNAL_TEMP).float_value;
+        requestToUart(uart_filestream, GET_TI);
+        TI = readFromUart(uart_filestream, GET_TI).float_value;
         double value = pidControl(TI);
         pwmControl(value);
 
-        requestToUart(uart_filestream, GET_POTENTIOMETER);
-        TR = readFromUart(uart_filestream, GET_POTENTIOMETER).float_value;
+        requestToUart(uart_filestream, GET_TR);
+        TR = readFromUart(uart_filestream, GET_TR).float_value;
         pidUpdateReference(TR);
 
         TE = getCurrentTemperature(&bme_connection);
@@ -137,12 +137,12 @@ void *PID(void *arg) {
             turnResistanceOn(100);
             turnFanOff();
             value = 100;
-            sendToUart(uart_filestream, SEND_SIGNAL, value);
+            sendToUart(uart_filestream, SEND_CONTROL_SIGNAL, value);
         } else if(TR <= TI) {
             turnResistanceOff();
             turnFanOn(100);
             value = -100;
-            sendToUart(uart_filestream, SEND_SIGNAL, value);
+            sendToUart(uart_filestream, SEND_CONTROL_SIGNAL, value);
             if(!timerStarted) {
                 timerStarted = 1;
             }
