@@ -128,12 +128,12 @@ void *PID(void *arg) {
 
         printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", intTemp, refTemp, extTemp);
 
-        if(refTemp > intTemp){
+        if(refTemp > intTemp && intTemp != -1){
             turnResistanceOn(100);
             turnFanOff();
             value = 100;
             sendToUart(uart_filestream, SEND_CONTROL_SIGNAL, value);
-        } else if(refTemp <= intTemp) {
+        } else if(refTemp <= intTemp && refTemp != -1) {
             turnResistanceOff();
             turnFanOn(100);
             value = -100;
@@ -159,7 +159,7 @@ void writeCsv(){
   time(&rawtime);
   timeinfo = localtime(&rawtime);
 
-  fprintf(fp, "%s;%.2f;%.2f;%.2f;\n", asctime(timeinfo), intTemp, refTemp, extTemp);
+  fprintf(fp, "%s,%.2f,%.2f,%.2f;\n", asctime(timeinfo), intTemp, refTemp, extTemp);
 
   fclose(fp);
 }
