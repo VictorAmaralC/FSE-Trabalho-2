@@ -46,7 +46,7 @@ void startProgram(){
 }
 
 void menu() {
-    int command, ;
+    int command;
 
     printf("Escolha o modo que deseja operar o sistema:\n1 - Dashboard\n2 - Debug (inserindo os dados de temperatura)\n");
     while(mode != 1 && mode != 2){
