@@ -106,9 +106,6 @@ void *PID(void *arg) {
             turnFanOn(100);
             value = -100;
             sendToUart(uart_filestream, SEND_CONTROL_SIGNAL, value);
-            if(!timerStarted) {
-                timerStarted = 1;
-            }
         }
     } while (mode == 1);
 }
