@@ -17,9 +17,11 @@
 int uart_filestream, key_gpio = 1;
 struct bme280_dev bme_connection;
 pthread_t fornoThread;
-float intTemp = 0, refTemp = 0, extTemp = 0;
+float intTemp = 0.0, refTemp = 0.0, extTemp = 0.0;
+float kp = 30.0, ki = 0.2, kd = 400.0;
 
-int mode = 0; // 1 = Aquecendo forno
+int heating = 0; // 1 = Aquecendo forno
+int mode = 0; // 1 - Dashboard; 2 - Debug
 
 void startProgram();
 void menu();
@@ -44,14 +46,34 @@ void startProgram(){
 }
 
 void menu() {
-    int command;
-    do {
-        requestToUart(uart_filestream, GET_UC);
-        command = readFromUart(uart_filestream, GET_UC).int_value;
-        writeCsv(command);
-        switchMode(command);
-        delay(5000);
-    } while (1);
+    int command, ;
+
+    printf("Escolha o modo que deseja operar o sistema:\n1 - Dashboard\n2 - Debug (inserindo os dados de temperatura)\n");
+    while(mode != 1 && mode != 2){
+        scanf("%d", &mode);
+    }
+
+    if(mode == 1){
+        do {
+            requestToUart(uart_filestream, GET_UC);
+            command = readFromUart(uart_filestream, GET_UC).int_value;
+            writeCsv(command);
+            switchMode(command);
+            delay(5000);
+        } while (1);
+    } else if (mode == 2){
+        printf("Defina os valores dos parametros de controle de temperatura do PID:\n");
+        printf("Kp: ");
+        scanf("%f", &kp);
+        printf("\nKi: ");
+        scanf("%f", &ki);
+        printf("\nKd: ");
+        scanf("%f", &kd);
+        printf("\nDefina uma temperatura de referencia para o forno:\n");
+        scanf("%f", &refTemp);
+        pidUpdateReference(refTemp);
+        switchMode(0xA3);
+    }
 }
 
 void switchMode(int command) {
@@ -66,14 +88,14 @@ void switchMode(int command) {
             break;
         case 0xA3:
             printf("Iniciou o aquecimento!\n");
-            mode = 1;
+            heating = 1;
             sendToUartByte(uart_filestream, SEND_FUNC_STATE, 1);
             pthread_create(&fornoThread, NULL, PID, NULL);
             break;
         case 0xA4:
             printf("Parou o aquecimento!\n");
             sendToUartByte(uart_filestream, SEND_FUNC_STATE, 0);
-            mode = 0;
+            heating = 0;
             break;
         default:
             break;
@@ -82,23 +104,26 @@ void switchMode(int command) {
 
 void *PID(void *arg) {
     float TI, TR, TE;
-    pidSetupConstants(30.0, 0.2, 400.0);
+    pidSetupConstants(kp, ki, kd);
     do {
         requestToUart(uart_filestream, GET_TI);
         TI = readFromUart(uart_filestream, GET_TI).float_value;
         double value = pidControl(TI);
         pwmControl(value);
 
-        requestToUart(uart_filestream, GET_TR);
-        TR = readFromUart(uart_filestream, GET_TR).float_value;
-        pidUpdateReference(TR);
+        if(mode == 1){
+            requestToUart(uart_filestream, GET_TR);
+            TR = readFromUart(uart_filestream, GET_TR).float_value;
+            pidUpdateReference(TR);
+        }
 
         TE = getCurrentTemperature(&bme_connection);
-        printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
 
         intTemp = TI;
         refTemp = TR;
         extTemp = TE;
+        
+        printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
 
         if(TR > TI){
             turnResistanceOn(100);
@@ -111,7 +136,8 @@ void *PID(void *arg) {
             value = -100;
             sendToUart(uart_filestream, SEND_CONTROL_SIGNAL, value);
         }
-    } while (mode == 1);
+    } while (heating == 1);
+    pthread_exit(0);
 }
 
 void exitProgram(){
@@ -130,7 +156,7 @@ void writeCsv(int command){
   time(&rawtime);
   timeinfo = localtime(&rawtime);
 
-  fprintf(fp, "%s;%d;%.2f;%.2f;%.2f;\n", asctime(timeinfo), command, refTemp, intTemp, extTemp);
+  fprintf(fp, "%s;%.2f;%.2f;%.2f;\n", asctime(timeinfo), refTemp, intTemp, extTemp);
 
   fclose(fp);
 }
