@@ -37,4 +37,4 @@ No menu o usuário deverá selecionar se deseja rodar o sistema no modo Dashboar
 
 [Referência de trabalho 1 - Dâmaso Junior](https://github.com/juniopereirab/FSE-Trabalho2)
 
-[Referência de Trabalho 2 - Murilo Loiola](https://gitlab.com/murilo-dan/proj2-fse/-/tree/master/)
+[Referência de Trabalho 2 - Murilo Loiola](https://gitlab.com/murilo-dan/proj1-fse)
