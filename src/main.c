@@ -56,12 +56,10 @@ void switchMode(int command) {
         case 0xA1:
             printf("Ligou o forno!\n");
             sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 1);
-            mode = 0;
             break;
         case 0xA2:
             printf("Desligou o forno!\n");
             sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 0);
-            mode = 0;
             break;
         case 0xA3:
             printf("Iniciou o aquecimento!\n");
@@ -80,7 +78,6 @@ void switchMode(int command) {
 }
 
 void *PID(void *arg) {
-    system("clear");
     float TI, TR, TE;
     pidSetupConstants(30.0, 0.2, 400.0);
     do {
@@ -94,7 +91,7 @@ void *PID(void *arg) {
         pidUpdateReference(TR);
 
         TE = getCurrentTemperature(&bme_connection);
-        printf("\tTI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
+        printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
 
         if(TR > TI){
             turnResistanceOn(100);
