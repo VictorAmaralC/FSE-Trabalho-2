@@ -38,7 +38,7 @@ int main () {
 
 void startProgram(){
     FILE * fp = fopen("report.csv", "w");
-    fprintf(fp, "TIME;TEMP_INT;TEMP_REF;TEMP_EXT;\n");
+    fprintf(fp, "TIME,TEMP_INT,TEMP_REF,TEMP_EXT;\n");
     fclose(fp);
     
     wiringPiSetup();
@@ -159,7 +159,7 @@ void writeCsv(){
   time(&rawtime);
   timeinfo = localtime(&rawtime);
 
-  fprintf(fp, "%s,%.2f,%.2f,%.2f;\n", asctime(timeinfo), intTemp, refTemp, extTemp);
+  fprintf(fp, "%s,%.2f,%.2f,%.2f\n", asctime(timeinfo), intTemp, refTemp, extTemp);
 
   fclose(fp);
 }
