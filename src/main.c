@@ -48,7 +48,7 @@ void menu() {
     do {
         requestToUart(uart_filestream, GET_UC);
         command = readFromUart(uart_filestream, GET_UC).int_value;
-        write_csv(command);
+        writeCsv(command);
         switchMode(command);
         delay(5000);
     } while (1);
