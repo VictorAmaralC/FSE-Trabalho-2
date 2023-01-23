@@ -72,9 +72,9 @@ void menu() {
         printf("Defina uma temperatura de referencia para o forno:\n");
         scanf("%f", &refTemp);
         pidUpdateReference(refTemp);
+        switchMode(0xA3);
         while (1){
             writeCsv();
-            switchMode(0xA3);
         }
     }
 }
