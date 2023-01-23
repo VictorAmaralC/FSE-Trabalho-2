@@ -67,7 +67,7 @@ Number_type readFromUart(int uart_filestream, unsigned char code){
     Number_type number = {-1, -1.0};
 
     int content = read(uart_filestream, buffer, 20);
-    if(!content){
+    if(!content || content == 0){
         printf("Nenhum dado foi recebido\n");
     }
     else if(content < 0){

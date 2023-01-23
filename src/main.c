@@ -15,10 +15,9 @@
 
 int uart_filestream, key_gpio = 1;
 struct bme280_dev bme_connection;
-pthread_t frying;
+pthread_t fornoThread;
 
-int seconds = 0;
-int mode = 0;
+int mode = 0; // 1 = Aquecendo forno
 
 void startProgram();
 void menu();
@@ -54,53 +53,26 @@ void menu() {
 
 void switchMode(int command) {
     switch(command) {
-        case 1:
-            if (mode == 0) {
-                printf("Ligou!");
-                sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 1);
-                mode = 1;
-            }
+        case 0xA1:
+            printf("Ligou o forno!\n");
+            sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 1);
+            mode = 0;
             break;
-        case 2:
-            if (mode != 0) {
-                printf("Desligou!");
-                sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 0);
-                mode = 0;
-            }
+        case 0xA2:
+            printf("Desligou o forno!\n");
+            sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 0);
+            mode = 0;
             break;
-        case 3:
-            if(seconds > 0) {
-                printf("Iniciou!");
-                sendToUartByte(uart_filestream, SEND_FUNC_STATE, 1);
-                mode = 2;
-                pthread_create(&frying, NULL, PID, NULL);
-            }
+        case 0xA3:
+            printf("Iniciou o aquecimento!\n");
+            mode = 1;
+            sendToUartByte(uart_filestream, SEND_FUNC_STATE, 1);
+            pthread_create(&fornoThread, NULL, PID, NULL);
             break;
-        case 4:
-            if (mode == 2) {
-                printf("Cancelou!");
-                int b = 0;
-                sendToUartByte(uart_filestream, SEND_FUNC_STATE, 0);
-                mode = 3;
-            }
-            break;
-        case 5:
-            printf("Mais um minuto!");
-            seconds = seconds + 60;
-            int minutes = seconds / 60;
-            sendToUart(uart_filestream, SEND_TIME, minutes);
-            break;
-        case 6:
-            if(seconds > 0) {
-                printf("Menos um minuto!");
-                seconds = seconds - 60;
-                int minutes = seconds / 60;
-                sendToUart(uart_filestream, SEND_TIME, minutes);
-            }
-            break;
-        case 7:
-            printf("Menu pre configurado!");
-            // Chama menu pre configurado.
+        case 0xA4:
+            printf("Parou o aquecimento!\n");
+            sendToUartByte(uart_filestream, SEND_FUNC_STATE, 0);
+            mode = 0;
             break;
         default:
             break;
@@ -111,7 +83,6 @@ void *PID(void *arg) {
     system("clear");
     float TI, TR, TE;
     pidSetupConstants(30.0, 0.2, 400.0);
-    int timerStarted = 0;
     do {
         requestToUart(uart_filestream, GET_TI);
         TI = readFromUart(uart_filestream, GET_TI).float_value;
@@ -124,14 +95,6 @@ void *PID(void *arg) {
 
         TE = getCurrentTemperature(&bme_connection);
         printf("\tTI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
-
-        if(timerStarted) {
-            int min = seconds / 60;
-            int sec = seconds % 60;
-            printDisplay(TI, min, sec);
-        } else {
-            printHeating();
-        }
 
         if(TR > TI){
             turnResistanceOn(100);
@@ -147,29 +110,13 @@ void *PID(void *arg) {
                 timerStarted = 1;
             }
         }
-
-        if(timerStarted) {
-            seconds--;
-            
-            delay(1000);
-        }
-
-        if(seconds == 0) {
-            mode = 1;
-            turnFanOn(100);
-            pthread_exit(0);
-        }
-    } while (mode == 2);
+    } while (mode == 1);
 }
 
 void exitProgram(){
-    system("clear");
     printf("Programa encerrado!\n");
     turnResistanceOff();
     turnFanOff();
-    sendToUartByte(uart_filestream, SEND_SYSTEM_STATE, 0);
-    sendToUartByte(uart_filestream, SEND_FUNC_STATE, 0);
-    sendToUart(uart_filestream, SEND_TIME, 0);
     closeUart(uart_filestream);
     exit(0);
 }
