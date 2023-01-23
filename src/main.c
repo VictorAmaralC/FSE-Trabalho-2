@@ -57,22 +57,25 @@ void menu() {
         do {
             requestToUart(uart_filestream, GET_UC);
             command = readFromUart(uart_filestream, GET_UC).int_value;
-            writeCsv(command);
+            writeCsv();
             switchMode(command);
-            delay(5000);
+            delay(3000);
         } while (1);
     } else if (mode == 2){
         printf("Defina os valores dos parametros de controle de temperatura do PID:\n");
         printf("Kp: ");
         scanf("%f", &kp);
-        printf("\nKi: ");
+        printf("Ki: ");
         scanf("%f", &ki);
-        printf("\nKd: ");
+        printf("Kd: ");
         scanf("%f", &kd);
-        printf("\nDefina uma temperatura de referencia para o forno:\n");
+        printf("Defina uma temperatura de referencia para o forno:\n");
         scanf("%f", &refTemp);
         pidUpdateReference(refTemp);
-        switchMode(0xA3);
+        while (1){
+            writeCsv();
+            switchMode(0xA3);
+        }
     }
 }
 
@@ -148,7 +151,7 @@ void exitProgram(){
     exit(0);
 }
 
-void writeCsv(int command){
+void writeCsv(){
   FILE * fp = fopen("report.csv", "a");
   time_t rawtime;
   struct tm * timeinfo;
