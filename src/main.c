@@ -75,6 +75,7 @@ void menu() {
         switchMode(0xA3);
         while (1){
             writeCsv();
+            delay(5000);
         }
     }
 }
@@ -106,34 +107,29 @@ void switchMode(int command) {
 }
 
 void *PID(void *arg) {
-    float TI, TR, TE;
     pidSetupConstants(kp, ki, kd);
     do {
         requestToUart(uart_filestream, GET_TI);
-        TI = readFromUart(uart_filestream, GET_TI).float_value;
-        double value = pidControl(TI);
+        intTemp = readFromUart(uart_filestream, GET_TI).float_value;
+        double value = pidControl(intTemp);
         pwmControl(value);
 
         if(mode == 1){
             requestToUart(uart_filestream, GET_TR);
-            TR = readFromUart(uart_filestream, GET_TR).float_value;
-            pidUpdateReference(TR);
+            refTemp = readFromUart(uart_filestream, GET_TR).float_value;
+            pidUpdateReference(refTemp);
         }
 
-        TE = getCurrentTemperature(&bme_connection);
+        extTemp = getCurrentTemperature(&bme_connection);
 
-        intTemp = TI;
-        refTemp = TR;
-        extTemp = TE;
-        
-        printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
+        printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", intTemp, refTemp, extTemp);
 
-        if(TR > TI){
+        if(refTemp > intTemp){
             turnResistanceOn(100);
             turnFanOff();
             value = 100;
             sendToUart(uart_filestream, SEND_CONTROL_SIGNAL, value);
-        } else if(TR <= TI) {
+        } else if(refTemp <= intTemp) {
             turnResistanceOff();
             turnFanOn(100);
             value = -100;
