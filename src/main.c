@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <time.h>
 
 #include "pid.h"
 #include "bme280.h"
@@ -16,6 +17,7 @@
 int uart_filestream, key_gpio = 1;
 struct bme280_dev bme_connection;
 pthread_t fornoThread;
+float intTemp = 0, refTemp = 0, extTemp = 0;
 
 int mode = 0; // 1 = Aquecendo forno
 
@@ -26,7 +28,7 @@ void *PID(void *arg);
 void exitProgram();
 
 int main () {
-    signal(SIGINT, exitProgram);
+    signal(SIGINT, exitProgram); //Sinal para finalizar programa
     startProgram();
     menu();
     return 0;
@@ -46,8 +48,9 @@ void menu() {
     do {
         requestToUart(uart_filestream, GET_UC);
         command = readFromUart(uart_filestream, GET_UC).int_value;
+        write_csv(command);
         switchMode(command);
-        delay(500);
+        delay(5000);
     } while (1);
 }
 
@@ -93,6 +96,10 @@ void *PID(void *arg) {
         TE = getCurrentTemperature(&bme_connection);
         printf("TI: %.2f⁰C - TR: %.2f⁰C - TE: %.2f⁰C\n", TI, TR, TE);
 
+        intTemp = TI;
+        refTemp = TR;
+        extTemp = TE;
+
         if(TR > TI){
             turnResistanceOn(100);
             turnFanOff();
@@ -113,4 +120,17 @@ void exitProgram(){
     turnFanOff();
     closeUart(uart_filestream);
     exit(0);
+}
+
+void writeCsv(int command){
+  FILE * fp = fopen("report.csv", "a");
+  time_t rawtime;
+  struct tm * timeinfo;
+
+  time(&rawtime);
+  timeinfo = localtime(&rawtime);
+
+  fprintf(fp, "%s;%d;%.2f;%.2f;%.2f;\n", asctime(timeinfo), command, refTemp, intTemp, extTemp);
+
+  fclose(fp);
 }
