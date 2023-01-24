@@ -31,6 +31,16 @@ No menu o usuário deverá selecionar se deseja rodar o sistema no modo Dashboar
 * Selecionar a primeira opção autilizando o dashboard fornecido pelo professor para realizar os comandos.
 * Selecionar a segunda opção Fornecer as constantes de referência para o controle do PID.
 
+## Relatório
+
+O experimento foi realizado no intervalo de 5 minutos, onde nos primeiros 2 minutos foi deixada a temperatura do resistor estabilizar (30ºC) e a partir disso foi incrementada a temperatura de referência (45ºC) para que se fizesse o acompanhamento das respostas recebidas. O sinal de controle se comportou como esperado, se mantendo em 100% (ligado) até que se ultrapassasse a marca da temperatura de referência, após a ultrapassagem, pode-se acompanhar o sinal de controle variando para que a temperatura do resistor se mantivesse coerente com a temperatura de referência.
+
+![Gráfico 1](./graph/graph1.png)
+
+### Problemas conhecidos
+
+Por conta de interferência de outros estudantes foi possível notar que em certos momentos o sensor de temperatura retornava um inteiro "-1" como resposta do medidor de temperatura, isso acontecia tanto para temperatura interna quanto para a temperatura de referência.
+
 ## Referências
 
 [Enunciado do Trabalho](https://gitlab.com/fse_fga/trabalhos-2022_2/trabalho-2-2022-2)
